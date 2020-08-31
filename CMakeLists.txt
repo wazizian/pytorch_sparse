@@ -21,6 +21,8 @@ if(WITH_CUDA)
   file(GLOB OPERATOR_SOURCES ${OPERATOR_SOURCES} csrc/cuda/*.h csrc/cuda/*.cu)
 endif()
 
+message(STATUS "OPERATOR_SOURCES: ${OPERATOR_SOURCES}")
+
 add_library(${PROJECT_NAME} SHARED ${OPERATOR_SOURCES})
 target_link_libraries(${PROJECT_NAME} PRIVATE ${TORCH_LIBRARIES} Python3::Python)
 set_target_properties(${PROJECT_NAME} PROPERTIES EXPORT_NAME TorchSparse)
@@ -65,6 +67,7 @@ install(FILES
   csrc/cpu/sample_cpu.h
   csrc/cpu/spmm_cpu.h
   csrc/cpu/spspmm_cpu.h
+  csrc/cpu/spspmm_out_cpu.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}/cpu)
 if(WITH_CUDA)
   install(FILES

@@ -52,9 +52,10 @@ def get_extensions():
 
         sources = [main]
 
-        path = osp.join(extensions_dir, 'cpu', f'{name}_cpu.cpp')
-        if osp.exists(path):
-            sources += [path]
+        for name_ext in ['_cpu.cpp', '_out_cpu.cpp']:
+            path = osp.join(extensions_dir, 'cpu', name + name_ext)
+            if osp.exists(path):
+                sources += [path]
 
         path = osp.join(extensions_dir, 'cuda', f'{name}_cuda.cu')
         if WITH_CUDA and osp.exists(path):
@@ -70,7 +71,6 @@ def get_extensions():
             libraries=libraries,
         )
         extensions += [extension]
-
     return extensions
 
 
