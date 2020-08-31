@@ -93,6 +93,8 @@ spspmm_out_cpu(torch::Tensor rowptrA, torch::Tensor colA,
             eC++;
           else {
             valC_data[eC] += valA_data[eA] * valB_data[eB];
+            eB++;
+            eC++;
           }
         }
       }

@@ -2,7 +2,7 @@ from itertools import product
 
 import pytest
 import torch
-from torch_sparse import spspmm, SparseTensor
+from torch_sparse import matmul, spspmm, SparseTensor
 
 from .utils import grad_dtypes, devices, tensor
 
@@ -43,3 +43,18 @@ def test_sparse_tensor_spspmm(dtype, device):
     out = x @ x.t()
     out = out.to_dense()
     assert torch.allclose(out, expected, atol=1e-7)
+
+    if device == torch.device("cpu"):
+        given_out = SparseTensor(
+                    row=torch.tensor(
+                        [0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                        device=device),
+                    col=torch.tensor(
+                        [0, 1, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                        device=device),
+                    value=torch.zeros(11, dtype=dtype, device=device),
+                )
+        out = matmul(x, x.t(), out=given_out)
+        out = out.to_dense()
+        assert torch.allclose(out, expected, atol=1e-7)
+

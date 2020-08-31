@@ -66,3 +66,40 @@ def test_spspmm(dtype, device):
     rowptr, col, value = out.csr()
     assert rowptr.tolist() == [0, 1, 2, 3]
     assert col.tolist() == [0, 1, 2]
+
+@pytest.mark.parametrize('dtype', grad_dtypes)
+def test_spspmm_out(dtype, device=torch.device('cpu')):
+    src = torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=dtype,
+                       device=device)
+
+    src = SparseTensor.from_dense(src)
+    out_edge_index = torch.tensor([[0, 1, 1], [0, 0, 1]],
+                                  device=device)
+    out_edge_attr = torch.zeros(3, dtype=dtype, device=device)
+    given_out = SparseTensor.from_edge_index(out_edge_index,
+                                             edge_attr=out_edge_attr,
+                                             sparse_sizes=(3, 3))
+    growptr, gcol, gvalue = given_out.csr()
+    out = matmul(src, src, out=given_out)
+    assert out.has_value()
+    rowptr, col, value = out.csr()
+    assert rowptr is growptr
+    assert col is gcol
+    assert value is gvalue
+    assert rowptr.tolist() == [0, 1, 3, 3]
+    assert col.tolist() == [0, 0, 1]
+    assert value.tolist() == [1, 0, 1]
+
+    src.set_value_(None)
+    given_out = SparseTensor.from_edge_index(out_edge_index,
+                                             edge_attr=out_edge_attr,
+                                             sparse_sizes=(3, 3))
+    given_out.set_value_(None)
+    growptr, gcol, _ = given_out.csr()
+    out = matmul(src, src, out=given_out)
+    rowptr, col, _ = out.csr()
+    assert not out.has_value()
+    assert rowptr is growptr
+    assert col is gcol
+    assert rowptr.tolist() == [0, 1, 3, 3]
+    assert col.tolist() == [0, 0, 1]

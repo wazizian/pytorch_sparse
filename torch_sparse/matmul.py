@@ -81,8 +81,6 @@ def spspmm_sum(src: SparseTensor, other: SparseTensor,
     rowptrB, colB, valueB = other.csr()
     M, K = src.sparse_size(0), other.sparse_size(1)
     if out is not None:
-        assert src.sparse_size(0) == out.sparse_size(0)
-        assert out.sparse_size(1) == other.sparse_size(1)
         rowptrC, colC, valueC = out.csr()
         rowptrC, colC, valueC = torch.ops.torch_sparse.spspmm_sum(
             rowptrA, colA, valueA, rowptrB, colB, valueB,
