@@ -5,28 +5,6 @@
 
 #include "utils.cuh"
 
-#define AT_DISPATCH_CUSPARSE_TYPES(TYPE, ...)                                  \
-  [&] {                                                                        \
-    switch (TYPE) {                                                            \
-    case torch::ScalarType::Float: {                                           \
-      using scalar_t = float;                                                  \
-      const auto &cusparsecsrgemm2_bufferSizeExt =                             \
-          cusparseScsrgemm2_bufferSizeExt;                                     \
-      const auto &cusparsecsrgemm2 = cusparseScsrgemm2;                        \
-      return __VA_ARGS__();                                                    \
-    }                                                                          \
-    case torch::ScalarType::Double: {                                          \
-      using scalar_t = double;                                                 \
-      const auto &cusparsecsrgemm2_bufferSizeExt =                             \
-          cusparseDcsrgemm2_bufferSizeExt;                                     \
-      const auto &cusparsecsrgemm2 = cusparseDcsrgemm2;                        \
-      return __VA_ARGS__();                                                    \
-    }                                                                          \
-    default:                                                                   \
-      AT_ERROR("Not implemented for '", toString(TYPE), "'");                  \
-    }                                                                          \
-  }()
-
 std::tuple<torch::Tensor, torch::Tensor, torch::optional<torch::Tensor>>
 spspmm_cuda(torch::Tensor rowptrA, torch::Tensor colA,
             torch::optional<torch::Tensor> optional_valueA,
