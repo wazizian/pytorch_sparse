@@ -9,7 +9,10 @@ std::tuple<torch::Tensor, torch::Tensor, torch::optional<torch::Tensor>>
 spspmm_cuda(torch::Tensor rowptrA, torch::Tensor colA,
             torch::optional<torch::Tensor> optional_valueA,
             torch::Tensor rowptrB, torch::Tensor colB,
-            torch::optional<torch::Tensor> optional_valueB, int64_t K,
+            torch::optional<torch::Tensor> optional_valueB,
+            torch::optional<torch::Tensor> optional_rowptrC,
+            torch::optional<torch::Tensor> optional_colC,
+            torch::optional<torch::Tensor> optional_valueC, int64_t K,
             std::string reduce) {
 
   CHECK_CUDA(rowptrA);
@@ -20,6 +23,12 @@ spspmm_cuda(torch::Tensor rowptrA, torch::Tensor colA,
   CHECK_CUDA(colB);
   if (optional_valueB.has_value())
     CHECK_CUDA(optional_valueB.value());
+  if (optional_rowptrC.has_value())
+    CHECK_CUDA(optional_rowptrC.value());
+  if (optional_colC.has_value())
+    CHECK_CUDA(optional_colC.value());
+  if (optional_valueC.has_value())
+    CHECK_CUDA(optional_valueC.value());
   cudaSetDevice(rowptrA.get_device());
 
   CHECK_INPUT(rowptrA.dim() == 1);
@@ -33,6 +42,16 @@ spspmm_cuda(torch::Tensor rowptrA, torch::Tensor colA,
   if (optional_valueB.has_value()) {
     CHECK_INPUT(optional_valueB.value().dim() == 1);
     CHECK_INPUT(optional_valueB.value().size(0) == colB.size(0));
+  }
+  if (optional_rowptrC.has_value())
+    CHECK_INPUT(optional_rowptrC.value().dim() == 1);
+  if (optional_colC.has_value())
+    CHECK_INPUT(optional_colC.value().dim() == 1);
+  if (optional_valueC.has_value()) {
+    CHECK_INPUT(optional_rowptrC.has_value());
+    CHECK_INPUT(optional_colC.has_value());
+    CHECK_INPUT(optional_valueC.value().dim() == 1);
+    CHECK_INPUT(optional_valueC.value().size(0) == optional_colC.value().size(0));
   }
 
   if (!optional_valueA.has_value() && optional_valueB.has_value())
@@ -64,7 +83,8 @@ spspmm_cuda(torch::Tensor rowptrA, torch::Tensor colA,
   auto colB_data = colB.data_ptr<int>();
 
   torch::Tensor rowptrC, colC;
-  torch::optional<torch::Tensor> optional_valueC = torch::nullopt;
+  int *rowptrC_data = NULL;
+
 
   int nnzC;
   int *nnzTotalDevHostPtr = &nnzC;
@@ -85,19 +105,28 @@ spspmm_cuda(torch::Tensor rowptrA, torch::Tensor colA,
     void *buffer = NULL;
     cudaMalloc(&buffer, bufferSize);
 
-    // Step 3: Compute CSR row pointer.
-    rowptrC = torch::empty(M + 1, rowptrA.options());
-    auto rowptrC_data = rowptrC.data_ptr<int>();
-    cusparseXcsrgemm2Nnz(handle, M, N, K, descr, colA.numel(), rowptrA_data,
-                         colA_data, descr, colB.numel(), rowptrB_data,
-                         colB_data, descr, 0, NULL, NULL, descr, rowptrC_data,
-                         nnzTotalDevHostPtr, info, buffer);
+    // Step 3: Compute CSR row pointer if needed.
+    if (!optional_rowptrC.has_value()){
+      rowptrC = torch::empty(M + 1, rowptrA.options());
+      rowptrC_data = rowptrC.data_ptr<int>();
+      cusparseXcsrgemm2Nnz(handle, M, N, K, descr, colA.numel(), rowptrA_data,
+                           colA_data, descr, colB.numel(), rowptrB_data,
+                           colB_data, descr, 0, NULL, NULL, descr, rowptrC_data,
+                           nnzTotalDevHostPtr, info, buffer);
+    } else {
+      rowptrC = optional_rowptrC.value();
+      rowptrC_data = rowptrC.data_ptr<int>();
+    }
 
     // Step 4: Compute CSR entries.
-    colC = torch::empty(nnzC, rowptrC.options());
+    if (!optional_colC.has_value()){
+      colC = torch::empty(nnzC, rowptrC.options());
+    } else {
+      colC = optional_colC.value();
+    }
     auto colC_data = colC.data_ptr<int>();
 
-    if (optional_valueA.has_value())
+    if (optional_valueA.has_value() && !optional_valueC.has_value())
       optional_valueC = torch::empty(nnzC, optional_valueA.value().options());
 
     scalar_t *valA_data = NULL, *valB_data = NULL, *valC_data = NULL;

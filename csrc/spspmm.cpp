@@ -23,7 +23,8 @@ spspmm_sum(torch::Tensor rowptrA, torch::Tensor colA,
   if (rowptrA.device().is_cuda()) {
 #ifdef WITH_CUDA
     return spspmm_cuda(rowptrA, colA, optional_valueA, rowptrB, colB,
-                       optional_valueB, K, "sum");
+                       optional_valueB, optional_rowptrC, optional_colC,
+                       optional_valueC, K, "sum");
 #else
     AT_ERROR("Not compiled with CUDA support");
 #endif
